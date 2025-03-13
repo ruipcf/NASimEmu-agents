@@ -1,5 +1,5 @@
 import numpy as np
-import gym, torch, logging
+import gymnasium as gym, torch, logging
 
 import wandb, argparse, itertools, os, random
 
@@ -60,6 +60,8 @@ def get_args(problem_config):
 	# delegate argparse to problem config
 	problem_config.update_argparse(parser)
 
+	import sys
+	sys.argv = ["main.py", "NASimEmu/scenarios/corp.v2.yaml", "-epoch", "50", "-max_epochs", "10", "-batch", "1"]  # Add default arguments for debugging
 	cmd_args = parser.parse_args()
 	return cmd_args
 
@@ -79,7 +81,7 @@ if __name__ == '__main__':
 	config.init(args)
 	problem_config.update_config(config, args) # update config with problem specific settings
 
-	print(f"Config: {config}")
+	# print(f"Config: {config}")
 
 	if config.seed:
 		init_seed(config.seed)
@@ -95,14 +97,14 @@ if __name__ == '__main__':
 
 	net = problem.make_net()
 	target_net = problem.make_net()
-	print(net)
-	print(f"Number of parameters: {net.get_param_count()}")
+	# print(net)
+	# print(f"Number of parameters: {net.get_param_count()}")
 
 	if config.load_model:
 		net.load(config.load_model)
 		target_net.load(config.load_model)
 
-		print(f"Model loaded: {config.load_model}")
+		# print(f"Model loaded: {config.load_model}")
 
 	if args.trace:
 		problem_debug.trace(net, config.load_model)
@@ -149,7 +151,12 @@ if __name__ == '__main__':
 
 			a, v, pi, raw_a = net(s)
 			a = np.array(a, dtype=object)
-			s, r, d, i = env.step(a)
+			# s, r, d, i = env.step(a)
+
+			s, r, terminated, truncated, i = env.step(a)
+			# d = terminated or truncated  # To maintain compatibility
+			d = np.logical_or(terminated, truncated)  # Correct way for NumPy arrays
+
 			net.reset_state(d)
 
 			a_cnt = [0 if a_action == -1 else 1 for (a_node, a_action) in a] # action_q - 0 = terminate / 1 = continue

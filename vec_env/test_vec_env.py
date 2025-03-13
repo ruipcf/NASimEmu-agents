@@ -2,7 +2,7 @@
 Tests for asynchronous vectorized environments.
 """
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 from .dummy_vec_env import DummyVecEnv

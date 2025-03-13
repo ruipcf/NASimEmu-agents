@@ -6,10 +6,11 @@ from .vec_env import VecEnv, CloudpickleWrapper, clear_mpi_env_vars
 
 def worker(remote, parent_remote, env_fn_wrappers):
     def step_env(env, action):
-        ob, reward, done, info = env.step(action)
+        # ob, reward, done, info = env.step(action)
+        ob, reward, terminated, truncated, info = env.step(action)
         # if done:
         #     ob = env.reset()
-        return ob, reward, done, info
+        return ob, reward, terminated, truncated, info
 
     parent_remote.close()
     envs = [env_fn_wrapper() for env_fn_wrapper in env_fn_wrappers.x]
@@ -84,8 +85,10 @@ class SubprocVecEnv(VecEnv):
         results = [remote.recv() for remote in self.remotes]
         results = _flatten_list(results)
         self.waiting = False
-        obs, rews, dones, infos = zip(*results)
-        return _flatten_obs(obs), np.stack(rews), np.stack(dones), infos
+        # obs, rews, dones, infos = zip(*results)
+        # return _flatten_obs(obs), np.stack(rews), np.stack(dones), infos
+        obs, rews, terminated, truncated, infos = zip(*results)
+        return _flatten_obs(obs), np.stack(rews), np.stack(terminated), np.stack(truncated), infos
 
     def reset(self):
         self._assert_not_closed()

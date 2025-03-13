@@ -55,7 +55,7 @@ class NASimConfig():
 
 		# calculate number of actions
 		env = NASimEmuEnv(scenario_name=config.scenario_name, augment_with_action=config.augment_with_action)
-		s = env.reset()
+		s, _ = env.reset()
 
 		config.action_dim = len(env.action_list)
 		config.node_dim = s.shape[1] + 1 # + 1 feature (node/subnet)

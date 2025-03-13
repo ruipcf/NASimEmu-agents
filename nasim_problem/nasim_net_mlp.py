@@ -42,7 +42,14 @@ class NASimNetMLP(Net):
         action_mask = []
 
         for s in s_batch:
-            s = s[:-1] # remove result
+            # s = s[:-1] # remove result
+            if isinstance(s, tuple):  # Check if s is a tuple and extract the array
+                s = s[0]
+
+            if isinstance(s, np.ndarray):  # Ensure s is a numpy array
+                s = s[:-1]  # Remove result if it's a numpy array
+            else:
+                print(f"Unexpected type for s: {type(s)}")  # Debugging line
 
             am = np.zeros(config.action_dim * self.MAX_ROWS) # create action mask
             am[len(s) * config.action_dim:] = 1

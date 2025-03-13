@@ -1,6 +1,6 @@
 from vec_env.subproc_vec_env import SubprocVecEnv
 from tqdm import tqdm
-import gym, numpy as np, torch
+import gymnasium as gym, numpy as np, torch
 import itertools
 
 from config import config
@@ -120,7 +120,9 @@ class NASimDebug():
                 a, v, pi, _ = net(s)
                 a = np.array(a, dtype=object)
 
-                s, r_, d_, i_ = test_env.step(a)
+                # s, r_, d_, i_ = test_env.step(a)
+                s, r_, terminated, truncated, i_ = test_env.step(a)
+                d_ = np.logical_or(terminated, truncated)
                 net.reset_state(d_)
 
                 r = r_[~terminated]
@@ -173,7 +175,7 @@ class NASimDebug():
 
     def debug(self, net, show=False):
         test_env = gym.make('NASimEmuEnv-v99', random_init=False)
-        s = test_env.reset()
+        s, _ = test_env.reset()
         
         saved_state = net.__class__() # create a fresh instance
         saved_state.clone_state(net)
@@ -186,16 +188,18 @@ class NASimDebug():
 
         net.clone_state(saved_state)
 
-        G = self._make_graph(s, node_softmax, action_softmax)
-        fig = self._plot(G, value.item(), q_val.item(), test_env)
+        # G = self._make_graph(s, node_softmax, action_softmax)
+        # G = self._make_graph_new(s)  # Usa o método correto
 
-        if show:
-            fig.show()
+        # fig = self._plot(G, value.item(), q_val.item(), test_env)
+
+        # if show:
+        #     fig.show()
 
         log = {
             'value': value, 
             'q_val': q_val,
-            'figure': fig
+            # 'figure': fig
         }
 
         return log

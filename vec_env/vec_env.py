@@ -133,8 +133,8 @@ class VecEnv(ABC):
 
     def get_viewer(self):
         if self.viewer is None:
-            from gym.envs.classic_control import rendering
-            self.viewer = rendering.SimpleImageViewer()
+            from gymnasium.utils.play import SimpleImageViewer
+            self.viewer = SimpleImageViewer()
         return self.viewer
 
 class VecEnvWrapper(VecEnv):

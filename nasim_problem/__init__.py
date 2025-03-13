@@ -4,7 +4,7 @@ from .nasim_debug import NASimDebug
 from .nasim_config import NASimConfig
 
 from config import config
-import gym
+import gymnasium
 
 class NASimRRL():
 	@staticmethod
@@ -25,7 +25,7 @@ class NASimRRL():
 
 	@staticmethod
 	def register_gym():
-		gym.envs.registration.register(
+		gymnasium.envs.registration.register(
 			id='NASimEmuEnv-v99',
 			entry_point='nasimemu.env:NASimEmuEnv',
 			kwargs={'scenario_name': config.scenario_name, 'step_limit': config.step_limit, 
