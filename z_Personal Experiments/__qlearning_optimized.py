@@ -12,7 +12,8 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 import gymnasium as gym
-import nasimemu.env_utils as env_utils
+
+from __utils import *
 
 
 # Set device
@@ -36,58 +37,6 @@ param_grid = {
     # ]
 }
 
-# Function to define the Q-network based on the architecture
-class QNetwork(nn.Module):
-    def __init__(self, input_dim, action_dim):
-        super(QNetwork, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Linear(128, action_dim)
-        )
-
-    def forward(self, x):
-        return self.fc(x)
-
-
-# Experience Replay Buffer
-class ReplayMemory:
-    def __init__(self, capacity):
-        self.memory = []
-        self.capacity = capacity
-        self.position = 0
-
-    def push(self, transition):
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = transition
-        self.position = (self.position + 1) % self.capacity
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-    def __len__(self):
-        return len(self.memory)
-
-# Function to pad states dynamically
-def pad_state(state, max_rows, max_cols):
-    """Pad state with zeros if it's smaller than max_rows and max_cols"""
-    current_rows, current_cols = state.shape
-    padded_state = torch.zeros((max_rows, max_cols), device=state.device)
-    padded_state[:current_rows, :current_cols] = state
-    return padded_state
-
-# Get list of valid actions at each step
-def get_valid_actions(env, state):
-    actions = env_utils.get_possible_actions(env, state)
-    return actions if actions else [env.action_space.sample()]
-
-# Function to convert PyTorch tensor to numpy.int64
-def tensor_to_numpy_int64(tensor):
-    return np.int64(tensor.item())
-
 # Function to run the experiment with different hyperparameters
 def run_experiment(hyperparameters):
 
@@ -104,19 +53,9 @@ def run_experiment(hyperparameters):
     STEPS_PER_EPISODE = hyperparameters['STEPS_PER_EPISODE']
     # Q_ARCHITECTURE = hyperparameters['Q_ARCHITECTURE']
 
-    LEARNING_RATE = 1e-3
-    GAMMA = 0.99
-    EPSILON = 1.0
-    EPSILON_DECAY = 0.999 #0.995
-    MIN_EPSILON = 0.1 #0.01
-    BATCH_SIZE = 64
-    MEMORY_SIZE = 10000
-    TARGET_UPDATE = 10
-    EPISODES = 500
-    STEPS_PER_EPISODE = 200
-
     # Initialize environment
-    env = gym.make('NASimEmu-v0', emulate=False, scenario_name='NASimEmu/scenarios/corp.v2.yaml:NASimEmu/scenarios/corp.v2.yaml')
+    env = gym.make('NASimEmu-v0', emulate=False, 
+                   scenario_name='NASimEmu/scenarios/md_entry_dmz_one_subnet.v2.yaml:NASimEmu/scenarios/md_entry_dmz_one_subnet.v2.yaml')
     env = env.unwrapped
 
     # Dynamically determine initial STATE shape
@@ -136,7 +75,7 @@ def run_experiment(hyperparameters):
     reward_list = []
     start_time = time.time()
 
-    for episode in tqdm(range(EPISODES)):
+    for episode in range(EPISODES):
         state, _ = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device)
         total_reward = 0
@@ -158,7 +97,7 @@ def run_experiment(hyperparameters):
                 optimizer = optim.Adam(q_net.parameters(), lr=LEARNING_RATE)
                 memory = ReplayMemory(MEMORY_SIZE)
 
-                print(f"⚠️ Reinitialized Q-network with new input size: {MAX_STATE_ROWS}x{MAX_STATE_COLS}, action size: {ACTION_DIM}")
+                # print(f"⚠️ Reinitialized Q-network with new input size: {MAX_STATE_ROWS}x{MAX_STATE_COLS}, action size: {ACTION_DIM}")
 
             state = pad_state(state, MAX_STATE_ROWS, MAX_STATE_COLS)
 
@@ -176,9 +115,6 @@ def run_experiment(hyperparameters):
             subnet = tensor_to_numpy_int64(subnet_tensor)
             host = tensor_to_numpy_int64(host_tensor)
             converted_action = ((subnet, host), action_id)
-
-            print(f"state.shape: {state.shape}\n converted_action: {converted_action}")
-            exit()
             
             next_state, reward, done, _, _ = env.step(converted_action)
         
@@ -195,11 +131,13 @@ def run_experiment(hyperparameters):
 
                 optimizer = optim.Adam(q_net.parameters(), lr=LEARNING_RATE)
                 memory = ReplayMemory(MEMORY_SIZE)
+                
+                # print(f"⚠️ Reinitialized Q-network with new input size: {MAX_STATE_ROWS}x{MAX_STATE_COLS}, action size: {ACTION_DIM}")
 
-                total_reward += reward
-                next_state = torch.tensor(next_state, dtype=torch.float32, device=device)
-                memory.push((state, action_id, reward, next_state, done))
-                state = next_state
+            total_reward += reward
+            next_state = torch.tensor(next_state, dtype=torch.float32, device=device)
+            memory.push((state, action_id, reward, next_state, done))
+            state = next_state
 
             # Train Q-network
             if len(memory) > BATCH_SIZE:
@@ -266,7 +204,7 @@ def grid_search(param_grid):
     keys, values = zip(*param_grid.items())
     combinations = [dict(zip(keys, combination)) for combination in itertools.product(*values)]
 
-    for params in combinations:
+    for params in tqdm(combinations):
         run_experiment(params)
 
 # Start grid search

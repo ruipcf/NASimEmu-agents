@@ -12,6 +12,8 @@ import gymnasium as gym
 import nasimemu.env_utils as env_utils
 from nasimemu.nasim.envs.render import Viewer
 
+from __utils import *
+
 # Configuração do Streamlit
 st.set_page_config(layout="wide")
 st.title("NASimEmu Reinforcement Learning (Q-Learning)")
@@ -35,7 +37,8 @@ EPISODES = 500
 STEPS_PER_EPISODE = 200
 
 # Initialize NASimEmu environment
-env = gym.make('NASimEmu-v0', emulate=False, scenario_name='NASimEmu/scenarios/corp.v2.yaml:NASimEmu/scenarios/corp.v2.yaml')
+env = gym.make('NASimEmu-v0', emulate=False, 
+               scenario_name='NASimEmu/scenarios/md_entry_dmz_one_subnet.v2.yaml:NASimEmu/scenarios/md_entry_dmz_one_subnet.v2.yaml')
 env = env.unwrapped
 
 # Dynamically determine initial STATE shape
@@ -43,57 +46,6 @@ initial_state, _ = env.reset()
 MAX_STATE_ROWS, MAX_STATE_COLS = initial_state.shape
 INPUT_DIM = MAX_STATE_ROWS * MAX_STATE_COLS
 ACTION_DIM = len(env.unwrapped.action_list)
-
-# Define the Q-network
-class QNetwork(nn.Module):
-    def __init__(self, input_dim, action_dim):
-        super(QNetwork, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Linear(128, action_dim)
-        )
-
-    def forward(self, x):
-        return self.fc(x)
-
-# Buffer de Replay
-class ReplayMemory:
-    def __init__(self, capacity):
-        self.memory = []
-        self.capacity = capacity
-        self.position = 0
-
-    def push(self, transition):
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = transition
-        self.position = (self.position + 1) % self.capacity
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-    def __len__(self):
-        return len(self.memory)
-    
-# Function to pad states dynamically
-def pad_state(state, max_rows, max_cols):
-    """Pad state with zeros if it's smaller than max_rows and max_cols"""
-    current_rows, current_cols = state.shape
-    padded_state = torch.zeros((max_rows, max_cols), device=state.device)
-    padded_state[:current_rows, :current_cols] = state
-    return padded_state
-
-# Get list of valid actions at each step
-def get_valid_actions(env, state):
-    actions = env_utils.get_possible_actions(env, state)
-    return actions if actions else [env.action_space.sample()]
-
-# Function to convert PyTorch tensor to numpy.int64
-def tensor_to_numpy_int64(tensor):
-    return np.int64(tensor.item())
 
 # Initialize Q-network and target network
 q_net = QNetwork(INPUT_DIM, ACTION_DIM).to(device)
@@ -216,7 +168,7 @@ for episode in range(EPISODES):
 
         # Network image in streamlit
         network_debug_mode = env.env.network
-        viewer = Viewer(network_debug_mode)
+        viewer = Viewer(network_debug_mode, mode = "interface")
         state_debug_mode = env.env.current_state
         fig, ax = plt.subplots(figsize=(3, 2))
         viewer.render_graph(state_debug_mode, show=False, ax=ax, width=3, height=2)
